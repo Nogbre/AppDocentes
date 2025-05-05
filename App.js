@@ -10,6 +10,7 @@ const Stack = createNativeStackNavigator();
 
 function AppNavigator() {
   const { docente, isLoading } = useContext(SessionContext);
+  const { login } = useContext(SessionContext);
 
   if (isLoading) return null;
 

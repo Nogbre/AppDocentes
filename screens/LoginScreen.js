@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useContext } from 'react';
 import {
   View,
   Text,
@@ -9,18 +9,21 @@ import {
   Dimensions,
   TouchableOpacity,
   Alert,
+  KeyboardAvoidingView,
+  ScrollView,
+  Platform
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SessionContext } from '../context/SessionContext';
 
 const { height } = Dimensions.get('window');
 
-export default function LoginScreen({ navigation }) {
+export default function LoginScreen() {
   const expandAnim = useRef(new Animated.Value(305)).current;
-
   const [correo, setCorreo] = useState('');
   const [contrasena, setContrasena] = useState('');
+  const { login } = useContext(SessionContext);
 
   const handleLogin = async () => {
     if (!correo || !contrasena) {
@@ -32,25 +35,19 @@ export default function LoginScreen({ navigation }) {
         correo,
         contrasena,
       });
-    
+
       const docente = response.data;
-      console.log('Docente recibido:', docente); // <--- REVISALO EN LA CONSOLA
-    
-      await AsyncStorage.setItem('docente', JSON.stringify(docente));
-    
+      await login(docente);
+
       Alert.alert('Bienvenido', 'Inicio de sesión exitoso.');
-    
+
       Animated.timing(expandAnim, {
         toValue: height,
         duration: 600,
         useNativeDriver: false,
-      }).start(() => {
-        navigation.replace('Home');
-      });
-      
+      }).start();
+
     } catch (error) {
-      console.log('Error de login:', error); // <--- VERIFICA ESTO TAMBIÉN
-    
       if (error.response) {
         if (error.response.status === 401) {
           Alert.alert('Datos erróneos', 'Correo o contraseña incorrectos.');
@@ -64,46 +61,51 @@ export default function LoginScreen({ navigation }) {
   };
 
   return (
-    <View style={styles.container}>
-      <Animated.View style={[styles.header, { height: expandAnim }]}>
-        <Image source={require('../assets/logo-2.png')} style={styles.logo} />
-      </Animated.View>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+        <Animated.View style={[styles.header, { height: expandAnim }]}>
+          <Image source={require('../assets/logo-2.png')} style={styles.logo} />
+        </Animated.View>
 
-      <View style={styles.formContainer}>
-        <Text style={styles.titulo}>Laboratorios</Text>
-        <Text style={styles.titulo2}>Univalle</Text>
-        <Text style={styles.titulo3}>Iniciar Sesión</Text>
+        <View style={styles.formContainer}>
+          <Text style={styles.titulo}>Laboratorios</Text>
+          <Text style={styles.titulo2}>Univalle</Text>
+          <Text style={styles.titulo3}>Iniciar Sesión</Text>
 
-        <View style={styles.inputWrapper}>
-          <MaterialIcons name="email" size={24} color="#999" style={styles.inputIcon} />
-          <TextInput
-            style={styles.inputText}
-            placeholder="example@univalle.edu"
-            keyboardType="email-address"
-            placeholderTextColor="#999"
-            value={correo}
-            onChangeText={setCorreo}
-            autoCapitalize="none"
-          />
+          <View style={styles.inputWrapper}>
+            <MaterialIcons name="email" size={24} color="#999" style={styles.inputIcon} />
+            <TextInput
+              style={styles.inputText}
+              placeholder="example@univalle.edu"
+              keyboardType="email-address"
+              placeholderTextColor="#999"
+              value={correo}
+              onChangeText={setCorreo}
+              autoCapitalize="none"
+            />
+          </View>
+
+          <View style={styles.inputWrapper}>
+            <MaterialIcons name="lock" size={24} color="#999" style={styles.inputIcon} />
+            <TextInput
+              style={styles.inputText}
+              placeholder="contraseña"
+              secureTextEntry
+              placeholderTextColor="#999"
+              value={contrasena}
+              onChangeText={setContrasena}
+            />
+          </View>
+
+          <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
+            <Text style={styles.loginButtonText}>INICIAR SESIÓN</Text>
+          </TouchableOpacity>
         </View>
-
-        <View style={styles.inputWrapper}>
-          <MaterialIcons name="lock" size={24} color="#999" style={styles.inputIcon} />
-          <TextInput
-            style={styles.inputText}
-            placeholder="contraseña"
-            secureTextEntry
-            placeholderTextColor="#999"
-            value={contrasena}
-            onChangeText={setContrasena}
-          />
-        </View>
-
-        <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-          <Text style={styles.loginButtonText}>INICIAR SESIÓN</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

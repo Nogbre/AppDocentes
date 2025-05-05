@@ -1,18 +1,20 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useContext } from 'react';
 import {
   View, Text, StyleSheet, Animated, Dimensions,
   Image, TouchableOpacity, Alert
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SessionContext } from '../context/SessionContext'; // <-- Asegúrate del path correcto
 
 const { height } = Dimensions.get('window');
 const NAVBAR_HEIGHT = 130;
 
-export default function HomeScreen({ navigation }) {
+export default function HomeScreen() {
   const slideAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const [animComplete, setAnimComplete] = useState(false);
   const [menuAbierto, setMenuAbierto] = useState(false);
+
+  const { logout } = useContext(SessionContext); // <- usamos el logout del contexto
 
   useEffect(() => {
     Animated.timing(slideAnim, {
@@ -41,8 +43,7 @@ export default function HomeScreen({ navigation }) {
 
   const cerrarSesion = async () => {
     try {
-      await AsyncStorage.removeItem('docente');
-      navigation.replace('Login');
+      await logout(); // <- actualiza el contexto y limpia AsyncStorage
     } catch (error) {
       Alert.alert('Error', 'No se pudo cerrar sesión.');
       console.error('Cerrar sesión error:', error);
