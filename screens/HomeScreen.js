@@ -1,20 +1,25 @@
 import React, { useRef, useEffect, useState, useContext } from 'react';
 import {
   View, Text, StyleSheet, Animated, Dimensions,
-  Image, TouchableOpacity, Alert
+  Image, TouchableOpacity, Alert, ScrollView, ActivityIndicator
 } from 'react-native';
-import { SessionContext } from '../context/SessionContext'; // <-- Asegúrate del path correcto
+import { SessionContext } from '../context/SessionContext';
+import { useNavigation } from '@react-navigation/native';
+import axios from 'axios';
 
 const { height } = Dimensions.get('window');
 const NAVBAR_HEIGHT = 130;
 
 export default function HomeScreen() {
+  const navigation = useNavigation();
+  const { logout, docente } = useContext(SessionContext);
+
   const slideAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const [animComplete, setAnimComplete] = useState(false);
   const [menuAbierto, setMenuAbierto] = useState(false);
-
-  const { logout } = useContext(SessionContext); // <- usamos el logout del contexto
+  const [solicitudes, setSolicitudes] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Animated.timing(slideAnim, {
@@ -31,6 +36,15 @@ export default function HomeScreen() {
     });
   }, []);
 
+  useEffect(() => {
+    if (docente?.id_docente) {
+      axios.get(`https://universidad-la9h.onrender.com/solicitudes-uso?id_docente=${docente.id_docente}`)
+        .then(res => setSolicitudes(res.data))
+        .catch(() => Alert.alert("Error", "No se pudieron cargar las solicitudes."))
+        .finally(() => setLoading(false));
+    }
+  }, [docente]);
+
   const toggleMenu = () => {
     const toValue = menuAbierto ? -(height - NAVBAR_HEIGHT) : 0;
     Animated.timing(slideAnim, {
@@ -43,17 +57,15 @@ export default function HomeScreen() {
 
   const cerrarSesion = async () => {
     try {
-      await logout(); // <- actualiza el contexto y limpia AsyncStorage
+      await logout();
     } catch (error) {
       Alert.alert('Error', 'No se pudo cerrar sesión.');
-      console.error('Cerrar sesión error:', error);
     }
   };
 
   return (
     <View style={styles.container}>
-      <Animated.View
-        style={[styles.overlay, { transform: [{ translateY: slideAnim }] }]}>
+      <Animated.View style={[styles.overlay, { transform: [{ translateY: slideAnim }] }]}>
         {animComplete && (
           <View style={styles.logoContainer}>
             <Image source={require('../assets/logo-2.png')} style={styles.logo} />
@@ -66,10 +78,6 @@ export default function HomeScreen() {
 
         {menuAbierto && (
           <View style={styles.menuContentCentered}>
-            <Text style={styles.menuText}>Laboratorios</Text>
-            <Text style={styles.menuText}>Insumos en Uso</Text>
-            <Text style={styles.menuText}>En desarrollo</Text>
-
             <TouchableOpacity onPress={cerrarSesion}>
               <Text style={[styles.menuText, { color: '#ffdddd', marginTop: 30 }]}>
                 Cerrar sesión
@@ -77,10 +85,34 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
         )}
+
       </Animated.View>
 
       <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
-        <Text style={styles.text}>Hola Mundo</Text>
+        <Text style={styles.text}>Solicitudes de {docente?.nombre}</Text>
+        {loading ? (
+          <ActivityIndicator size="large" color="#592644" />
+        ) : (
+          <ScrollView style={{ marginTop: 20, width: '100%' }}>
+            {solicitudes.length === 0 ? (
+              <Text style={styles.noData}>No hay solicitudes registradas.</Text>
+            ) : (
+              solicitudes.map(s => (
+                <View key={s.id_solicitud} style={styles.card}>
+                  <Text style={styles.cardTitle}>{s.practica_titulo}</Text>
+                  <Text style={styles.cardText}>Estudiantes: {s.numero_estudiantes}</Text>
+                  <Text style={styles.cardText}>Estado: {s.estado}</Text>
+                  <Text style={styles.cardText}>Laboratorio: {s.laboratorio_nombre}</Text>
+                  <Text style={styles.cardText}>Fecha: {new Date(s.fecha_solicitud).toLocaleString()}</Text>
+                </View>
+              ))
+            )}
+            <TouchableOpacity style={styles.solicitudButton} onPress={() => navigation.navigate('CrearSolicitud')}>
+              <Text style={styles.solicitudButtonText}>+ Crear nueva solicitud</Text>
+            </TouchableOpacity>
+
+          </ScrollView>
+        )}
       </Animated.View>
     </View>
   );
@@ -89,9 +121,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   overlay: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
+    top: 0, left: 0, right: 0,
     height: height,
     backgroundColor: '#592644',
     zIndex: 10,
@@ -139,14 +169,14 @@ const styles = StyleSheet.create({
   content: {
     zIndex: 1,
     padding: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+    paddingTop: 30,
     flex: 1,
   },
   text: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#592644',
+    textAlign: 'center',
   },
   menuContentCentered: {
     position: 'absolute',
@@ -162,4 +192,44 @@ const styles = StyleSheet.create({
     marginVertical: 10,
     color: 'white',
   },
+  noData: {
+    textAlign: 'center',
+    color: '#999',
+    marginTop: 30,
+  },
+  card: {
+    backgroundColor: '#f1f1f1',
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 15,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 4,
+  },
+  cardTitle: {
+    fontWeight: 'bold',
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 5,
+  },
+  cardText: {
+    fontSize: 14,
+    color: '#555',
+  },
+  solicitudButton: {
+    backgroundColor: '#592644',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignSelf: 'center',
+    marginTop: 15,
+    marginBottom: 10
+  },
+  solicitudButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16
+  },
+  
 });

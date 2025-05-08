@@ -16,6 +16,7 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import axios from 'axios';
 import { SessionContext } from '../context/SessionContext';
+import { useNavigation } from '@react-navigation/native';
 
 const { height } = Dimensions.get('window');
 
@@ -24,41 +25,38 @@ export default function LoginScreen() {
   const [correo, setCorreo] = useState('');
   const [contrasena, setContrasena] = useState('');
   const { login } = useContext(SessionContext);
+  const navigation = useNavigation();
+
 
   const handleLogin = async () => {
     if (!correo || !contrasena) {
       return Alert.alert('Error', 'Por favor completa todos los campos.');
     }
-
+  
     try {
       const response = await axios.post('https://universidad-la9h.onrender.com/auth/login', {
         correo,
         contrasena,
       });
-
+  
       const docente = response.data;
       await login(docente);
-
-      Alert.alert('Bienvenido', 'Inicio de sesión exitoso.');
-
+    
       Animated.timing(expandAnim, {
         toValue: height,
         duration: 600,
         useNativeDriver: false,
       }).start();
-
+  
     } catch (error) {
-      if (error.response) {
-        if (error.response.status === 401) {
-          Alert.alert('Datos erróneos', 'Correo o contraseña incorrectos.');
-        } else {
-          Alert.alert('Error del servidor', error.response.data.message || 'Algo salió mal.');
-        }
+      if (error.response?.status === 401) {
+        Alert.alert('Datos erróneos', 'Correo o contraseña incorrectos.');
       } else {
-        Alert.alert('Error de conexión', 'No se pudo conectar con el servidor.');
+        Alert.alert('Error', 'No se pudo conectar con el servidor.');
       }
     }
   };
+  
 
   return (
     <KeyboardAvoidingView
