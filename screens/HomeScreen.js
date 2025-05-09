@@ -1,19 +1,18 @@
 import React, { useRef, useEffect, useState, useContext } from 'react';
 import {
   View, Text, StyleSheet, Animated, Dimensions,
-  TouchableOpacity, Alert, ScrollView, ActivityIndicator, RefreshControl
+  TouchableOpacity, Alert, ScrollView, ActivityIndicator, RefreshControl, Modal
 } from 'react-native';
 import { SessionContext } from '../context/SessionContext';
-import { useNavigation } from '@react-navigation/native';
 import axios from 'axios';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Ionicons } from '@expo/vector-icons';
+import FormularioSolicitud from '../components/FormularioSolicitud';
 
 const { height } = Dimensions.get('window');
 const NAVBAR_HEIGHT = 130;
 
 export default function HomeScreen() {
-  const navigation = useNavigation();
   const { logout, docente } = useContext(SessionContext);
 
   const slideAnim = useRef(new Animated.Value(0)).current;
@@ -22,8 +21,9 @@ export default function HomeScreen() {
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [solicitudes, setSolicitudes] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filtro, setFiltro] = useState('pendiente'); // Filtro por defecto
-  const [isRefreshing, setIsRefreshing] = useState(false); // Estado para el refresco
+  const [filtro, setFiltro] = useState('pendiente');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
 
   useEffect(() => {
     Animated.timing(slideAnim, {
@@ -40,33 +40,26 @@ export default function HomeScreen() {
     });
   }, []);
 
-  useEffect(() => {
+  const cargarSolicitudes = () => {
     if (docente?.id_docente) {
-      setLoading(true); // Asegurarse de que se marque como cargando antes de la petición
+      setLoading(true);
       axios.get(`https://universidad-la9h.onrender.com/solicitudes-uso?id_docente=${docente.id_docente}`)
-        .then(res => {
-          setSolicitudes(res.data);
-        })
+        .then(res => setSolicitudes(res.data))
         .catch(() => {
           Alert.alert("Error", "No se pudieron cargar las solicitudes.");
         })
         .finally(() => setLoading(false));
     }
+  };
+
+  useEffect(() => {
+    cargarSolicitudes();
   }, [docente]);
 
-  // Función para manejar el refresco de la lista
   const onRefresh = () => {
     setIsRefreshing(true);
-    if (docente?.id_docente) {
-      axios.get(`https://universidad-la9h.onrender.com/solicitudes-uso?id_docente=${docente.id_docente}`)
-        .then(res => {
-          setSolicitudes(res.data);
-        })
-        .catch(() => {
-          Alert.alert("Error", "No se pudieron cargar las solicitudes.");
-        })
-        .finally(() => setIsRefreshing(false));
-    }
+    cargarSolicitudes();
+    setIsRefreshing(false);
   };
 
   const toggleMenu = () => {
@@ -92,14 +85,10 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <Animated.View style={[styles.overlay, { transform: [{ translateY: slideAnim }] }]}>
-        {animComplete && (
-          <View style={styles.logoContainer} />
-        )}
-
+        {animComplete && <View style={styles.logoContainer} />}
         <TouchableOpacity style={styles.navbar} onPress={toggleMenu}>
           <Ionicons name="home-outline" size={30} color="white" style={{ marginTop: 50 }} />
         </TouchableOpacity>
-
         {menuAbierto && (
           <View style={styles.menuContentCentered}>
             <TouchableOpacity onPress={cerrarSesion} style={styles.logoutButton}>
@@ -117,10 +106,7 @@ export default function HomeScreen() {
           {['pendiente', 'aprobada', 'rechazada'].map(estado => (
             <TouchableOpacity
               key={estado}
-              style={[
-                styles.filtroButton,
-                filtro === estado && styles.filtroButtonActivo
-              ]}
+              style={[styles.filtroButton, filtro === estado && styles.filtroButtonActivo]}
               onPress={() => setFiltro(estado)}
             >
               <Text style={[styles.filtroButtonText, filtro === estado && styles.filtroButtonTextActivo]}>
@@ -167,12 +153,24 @@ export default function HomeScreen() {
         <TouchableOpacity
           activeOpacity={0.8}
           style={styles.solicitudButton}
-          onPress={() => navigation.navigate('CrearSolicitud')}
+          onPress={() => setModalVisible(true)}
         >
           <Ionicons name="add-circle-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
           <Text style={styles.solicitudButtonText}>Crear nueva solicitud</Text>
         </TouchableOpacity>
       </Animated.View>
+
+      {/* MODAL */}
+      <Modal
+        visible={modalVisible}
+        animationType="slide"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <FormularioSolicitud
+          onClose={() => setModalVisible(false)}
+          onSuccess={onRefresh}
+        />
+      </Modal>
     </View>
   );
 }
