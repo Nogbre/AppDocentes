@@ -1,15 +1,17 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import {
-  View, Text, TextInput, StyleSheet,
-  TouchableOpacity, ActivityIndicator, Alert,
-  KeyboardAvoidingView, Platform, FlatList
+  View, Text, TextInput, StyleSheet, TouchableOpacity, ActivityIndicator, Alert,
+  Platform, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard, ScrollView
 } from 'react-native';
 import axios from 'axios';
+import { useNavigation } from '@react-navigation/native';
 import { SessionContext } from '../context/SessionContext';
 import { Picker } from '@react-native-picker/picker';
-import SolicitudExitosa from '../components/SolicitudExitosa'; 
+import DateTimePicker from '@react-native-community/datetimepicker';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
-export default function CrearSolicitudScreen({ navigation }) {
+export default function FormularioSolicitudPage() {
+  const navigation = useNavigation();
   const { docente } = useContext(SessionContext);
   const [practicas, setPracticas] = useState([]);
   const [practicaSeleccionada, setPracticaSeleccionada] = useState(null);
@@ -17,34 +19,58 @@ export default function CrearSolicitudScreen({ navigation }) {
   const [tamanoGrupo, setTamanoGrupo] = useState('3');
   const [insumos, setInsumos] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [solicitudEnviada, setSolicitudEnviada] = useState(false); 
+  const [fechaReserva, setFechaReserva] = useState(new Date());
+  const [horaInicio, setHoraInicio] = useState(new Date());
+  const [horaFin, setHoraFin] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showStartTimePicker, setShowStartTimePicker] = useState(false);
+  const [showEndTimePicker, setShowEndTimePicker] = useState(false);
 
   useEffect(() => {
-   
     axios.get('https://universidad-la9h.onrender.com/practicas')
       .then(res => setPracticas(res.data))
       .catch(() => Alert.alert("Error", "No se pudieron cargar las prácticas."));
   }, []);
 
   const cargarInsumos = async (id_practica) => {
-    console.log("Cargando insumos para la práctica con id:", id_practica);
     try {
       setLoading(true);
       const res = await axios.get(`https://universidad-la9h.onrender.com/practicas/${id_practica}/insumos`);
-      console.log("Insumos cargados:", res.data);
       setInsumos(res.data);
-    } catch (error) {
-      console.error("Error cargando los insumos:", error);
+    } catch {
       Alert.alert("Error", "No se pudieron cargar los insumos.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSeleccionPractica = (itemValue) => {
-    const seleccionada = practicas.find(practica => practica.id_practica === itemValue);
+  const handleSeleccionPractica = (id) => {
+    const seleccionada = practicas.find(p => p.id_practica === id);
     setPracticaSeleccionada(seleccionada);
-    cargarInsumos(itemValue);
+    cargarInsumos(id);
+  };
+
+  const formatDate = (date) => {
+    return date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  };
+
+  const formatTime = (date) => {
+    return date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false });
+  };
+
+  const handleDateChange = (_, selectedDate) => {
+    setShowDatePicker(false);
+    if (selectedDate instanceof Date) setFechaReserva(selectedDate);
+  };
+
+  const handleStartTimeChange = (_, selectedTime) => {
+    setShowStartTimePicker(false);
+    if (selectedTime instanceof Date) setHoraInicio(selectedTime);
+  };
+
+  const handleEndTimeChange = (_, selectedTime) => {
+    setShowEndTimePicker(false);
+    if (selectedTime instanceof Date) setHoraFin(selectedTime);
   };
 
   const calcularCantidadTotal = (porGrupo) => {
@@ -53,173 +79,217 @@ export default function CrearSolicitudScreen({ navigation }) {
   };
 
   const handleEnviar = async () => {
-  if (!practicaSeleccionada || !numeroEstudiantes) {
-    return Alert.alert("Error", "Completa todos los campos.");
-  }
+    if (!practicaSeleccionada || !numeroEstudiantes) {
+      return Alert.alert("Error", "Completa todos los campos.");
+    }
 
-  const payload = {
-    id_docente: docente?.id_docente,
-    id_practica: practicaSeleccionada.id_practica,
-    id_laboratorio: practicaSeleccionada.id_laboratorio,
-    fecha_hora_inicio: new Date().toISOString(),
-    fecha_hora_fin: new Date(Date.now() + 3600000).toISOString(),
-    numero_estudiantes: parseInt(numeroEstudiantes),
-    tamano_grupo: parseInt(tamanoGrupo),
+    if (horaFin <= horaInicio) {
+      return Alert.alert("Error", "La hora de fin debe ser posterior a la hora de inicio");
+    }
+
+    const fechaHoraInicio = new Date(fechaReserva);
+    fechaHoraInicio.setHours(horaInicio.getHours(), horaInicio.getMinutes());
+
+    const fechaHoraFin = new Date(fechaReserva);
+    fechaHoraFin.setHours(horaFin.getHours(), horaFin.getMinutes());
+
+    const payload = {
+      id_docente: docente?.id_docente,
+      id_practica: practicaSeleccionada.id_practica,
+      id_laboratorio: practicaSeleccionada.id_laboratorio,
+      fecha_hora_inicio: fechaHoraInicio.toISOString(),
+      fecha_hora_fin: fechaHoraFin.toISOString(),
+      numero_estudiantes: parseInt(numeroEstudiantes),
+      tamano_grupo: parseInt(tamanoGrupo),
+      observaciones: "Solicitud de práctica de electrónica básica"
+    };
+
+    try {
+      setLoading(true);
+      await axios.post('https://universidad-la9h.onrender.com/solicitudes-uso', payload);
+      navigation.navigate('SolicitudExitosa');
+
+    } catch (e) {
+      Alert.alert("Error", e.response?.data?.message || "Error al crear solicitud.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  try {
-    setLoading(true);
-    await axios.post('https://universidad-la9h.onrender.com/solicitudes-uso', payload);
-    setLoading(false);
-    navigation.navigate('SolicitudExitosa');  // Redirigir a la pantalla de animación
-  } catch (e) {
-    setLoading(false);
-    Alert.alert("Error", e.response?.data?.message || "Error al crear solicitud.");
-  }
-};
-
-
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-      <FlatList
-        ListHeaderComponent={
-          <>
-            <Text style={styles.mainTitle}>Crear Solicitud</Text>
-            <Text style={styles.title}>Selecciona una práctica</Text>
-            {loading && <ActivityIndicator size="small" color="#592644" />}
-            <Picker
-              selectedValue={practicaSeleccionada?.id_practica}
-              onValueChange={handleSeleccionPractica}
-              style={styles.picker}
-            >
-              {practicas.map(practica => (
-                <Picker.Item key={practica.id_practica} label={practica.titulo} value={practica.id_practica} />
-              ))}
-            </Picker>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeButton}>
+            <Text style={styles.closeButtonText}>✕</Text>
+          </TouchableOpacity>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Número de estudiantes"
-              keyboardType="numeric"
-              value={numeroEstudiantes}
-              onChangeText={setNumeroEstudiantes}
-            />
+          <Text style={styles.title}>Crear Solicitud</Text>
+          {loading && <ActivityIndicator size="small" color="#592644" />}
 
-            <TextInput
-              style={styles.input}
-              placeholder="Tamaño de grupo (opcional)"
-              keyboardType="numeric"
-              value={tamanoGrupo}
-              onChangeText={setTamanoGrupo}
-            />
+          {/* Fecha y hora */}
+          <TouchableOpacity style={styles.datetimeInput} onPress={() => setShowDatePicker(true)}>
+            <Text style={styles.datetimeText}>{formatDate(fechaReserva)}</Text>
+            <Ionicons name="calendar" size={20} color="#592644" />
+          </TouchableOpacity>
 
-            {insumos.length > 0 && (
-              <View style={styles.cardContainer}>
-                <Text style={styles.subtitle}>Insumos requeridos</Text>
-                {insumos.map(insumo => (
-                  <View key={insumo.id_insumo} style={styles.card}>
-                    <Text style={styles.insumoText}>{insumo.insumo_nombre}</Text>
-                    <Text style={styles.insumoTextSmall}>
-                      {insumo.cantidad_requerida} x grupo → Total: {calcularCantidadTotal(insumo.cantidad_requerida)}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            )}
-
-            {solicitudEnviada && <SolicitudExitosa />}  
-
-            <TouchableOpacity style={styles.button} onPress={handleEnviar}>
-              <Text style={styles.buttonText}>Enviar Solicitud</Text>
+          <View style={styles.timeContainer}>
+            <TouchableOpacity style={[styles.datetimeInput, { flex: 1, marginRight: 10 }]} onPress={() => setShowStartTimePicker(true)}>
+              <Text style={styles.datetimeText}>{formatTime(horaInicio)}</Text>
+              <Ionicons name="time-outline" size={20} color="#592644" />
             </TouchableOpacity>
-          </>
-        }
-        data={[]}
-        renderItem={null}
-        contentContainerStyle={styles.scroll}
-      />
+            <TouchableOpacity style={[styles.datetimeInput, { flex: 1 }]} onPress={() => setShowEndTimePicker(true)}>
+              <Text style={styles.datetimeText}>{formatTime(horaFin)}</Text>
+              <Ionicons name="time-outline" size={20} color="#592644" />
+            </TouchableOpacity>
+          </View>
+
+          {showDatePicker && (
+            <DateTimePicker value={fechaReserva} mode="date" display="spinner" onChange={handleDateChange} minimumDate={new Date()} locale="es-ES" />
+          )}
+          {showStartTimePicker && (
+            <DateTimePicker value={horaInicio} mode="time" display="spinner" onChange={handleStartTimeChange} locale="es-ES" />
+          )}
+          {showEndTimePicker && (
+            <DateTimePicker value={horaFin} mode="time" display="spinner" onChange={handleEndTimeChange} locale="es-ES" />
+          )}
+
+          <Picker selectedValue={practicaSeleccionada?.id_practica} onValueChange={handleSeleccionPractica} style={styles.picker} dropdownIconColor="#592644">
+            <Picker.Item label="Selecciona una práctica..." value={null} color="#999" />
+            {practicas.map(p => <Picker.Item key={p.id_practica} label={p.titulo} value={p.id_practica} color="#000" />)}
+          </Picker>
+
+          <TextInput style={styles.input} placeholder="Número de estudiantes" keyboardType="numeric" value={numeroEstudiantes} onChangeText={setNumeroEstudiantes} />
+          <TextInput style={styles.input} placeholder="Tamaño de grupo" keyboardType="numeric" value={tamanoGrupo} onChangeText={setTamanoGrupo} />
+
+          {insumos.length > 0 && (
+            <View style={styles.insumosContainer}>
+              <Text style={styles.insumosTitle}>Insumos requeridos</Text>
+              {insumos.map(i => (
+                <View key={i.id_insumo} style={styles.insumoRow}>
+                  <Text style={styles.insumoNombre}>{i.insumo_nombre}</Text>
+                  <Text style={styles.insumoCantidad}>{calcularCantidadTotal(i.cantidad_requerida)}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          <TouchableOpacity style={styles.button} onPress={handleEnviar}>
+            <Text style={styles.buttonText}>Enviar Solicitud</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: { padding: 40, paddingBottom: 60 },
-  mainTitle: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    marginBottom: 25,
-    textAlign: 'center',
+  
+  container: { 
+    padding: 20,
+    backgroundColor: Platform.OS === 'ios' ? '#DADADA' : '#FFFFFF',
+    paddingTop: 70 
+      
+  },
+  title: { 
+    fontSize: 24, 
+    fontWeight: 'bold', 
+    marginBottom: 20, 
     color: '#592644',
-    letterSpacing: 1,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginBottom: 15,
-    color: '#333',
-  },
-  subtitle: {
-    marginTop: 20,
-    fontWeight: 'bold',
-    fontSize: 18,
-    color: '#333',
-  },
-  picker: {
-    height: 50,
-    width: '100%',
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 10,
-    marginVertical: 12,
-    backgroundColor: '#fff',
+    textAlign: 'center'
   },
   input: {
-    marginVertical: 12,
     borderWidth: 1,
-    borderRadius: 10,
-    padding: 12,
     borderColor: '#ccc',
-    backgroundColor: '#f9f9f9',
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 15,
+    fontSize: 16,
+    backgroundColor: '#fff'
+  },
+  insumosContainer: { 
+    marginVertical: 10,
+    width: '100%'
+  },
+  button: {
+    backgroundColor: '#592644',
+    padding: 16,
+    borderRadius: 10,
+    marginTop: 20,
+    marginBottom: 20
+  },
+  buttonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    fontSize: 16
+  },
+  insumosTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 10,
+  },
+  insumoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    backgroundColor: '#f8f8f8',
+    marginBottom: 8,
+  },
+  insumoNombre: {
     fontSize: 16,
     color: '#333',
   },
-  cardContainer: { marginTop: 20 },
-  card: {
-    padding: 16,
-    backgroundColor: '#eaeaea',
-    marginVertical: 8,
-    borderRadius: 8,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
+  insumoCantidad: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#592644',
   },
-  insumoText: { fontWeight: '600', fontSize: 16, color: '#333' },
-  insumoTextSmall: { fontSize: 14, color: '#555' },
-  button: {
-    marginTop: 30,
-    backgroundColor: '#592644',
-    paddingVertical: 16,
-    borderRadius: 12,
-    marginHorizontal: 20,
-  },
-  buttonText: {
-    textAlign: 'center',
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 18,
-  },
-  confirmationMessage: {
-    marginTop: 20,
-    padding: 15,
-    backgroundColor: 'green',
-    borderRadius: 10,
+  closeButton: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    zIndex: 10,
+    backgroundColor: '#eee',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  confirmationText: {
-    color: '#fff',
+  closeButtonText: {
+    fontSize: 20,
     fontWeight: 'bold',
-    fontSize: 16,
+    color: '#333',
   },
+  datetimeInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 15,
+    backgroundColor: '#fff'
+  },
+  datetimeText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  timeContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  picker: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 10,
+    marginBottom: 15,
+  }
 });

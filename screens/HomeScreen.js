@@ -1,18 +1,17 @@
 import React, { useRef, useEffect, useState, useContext } from 'react';
 import {
   View, Text, StyleSheet, Animated, Dimensions,
-  TouchableOpacity, Alert, ScrollView, ActivityIndicator, RefreshControl, Modal
+  TouchableOpacity, Alert, ScrollView, ActivityIndicator, RefreshControl
 } from 'react-native';
 import { SessionContext } from '../context/SessionContext';
 import axios from 'axios';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Ionicons } from '@expo/vector-icons';
-import FormularioSolicitud from '../components/FormularioSolicitud';
 
 const { height } = Dimensions.get('window');
 const NAVBAR_HEIGHT = 130;
 
-export default function HomeScreen() {
+export default function HomeScreen({ navigation }) {
   const { logout, docente } = useContext(SessionContext);
 
   const slideAnim = useRef(new Animated.Value(0)).current;
@@ -23,7 +22,6 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [filtro, setFiltro] = useState('pendiente');
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [modalVisible, setModalVisible] = useState(false);
 
   useEffect(() => {
     Animated.timing(slideAnim, {
@@ -153,33 +151,18 @@ export default function HomeScreen() {
         <TouchableOpacity
           activeOpacity={0.8}
           style={styles.solicitudButton}
-          onPress={() => setModalVisible(true)}
+          onPress={() => navigation.navigate('CrearSolicitud')}
         >
           <Ionicons name="add-circle-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
           <Text style={styles.solicitudButtonText}>Crear nueva solicitud</Text>
         </TouchableOpacity>
       </Animated.View>
-
-      {/* MODAL */}
-      <Modal
-        visible={modalVisible}
-        animationType="slide"
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <FormularioSolicitud
-          onClose={() => setModalVisible(false)}
-          onSuccess={onRefresh}
-        />
-      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
+  container: { flex: 1, backgroundColor: '#fff' },
   overlay: {
     position: 'absolute',
     top: 0, left: 0, right: 0,
@@ -212,11 +195,6 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
   },
-  navbarText: {
-    marginTop: 40,
-    color: 'white',
-    fontSize: 24,
-  },
   content: {
     zIndex: 1,
     paddingHorizontal: 20,
@@ -238,11 +216,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     width: '100%',
   },
-  noData: {
-    textAlign: 'center',
-    color: '#999',
-    marginTop: 30,
-  },
   filtroButton: {
     paddingVertical: 8,
     paddingHorizontal: 16,
@@ -259,6 +232,11 @@ const styles = StyleSheet.create({
   },
   filtroButtonTextActivo: {
     color: 'white',
+  },
+  noData: {
+    textAlign: 'center',
+    color: '#999',
+    marginTop: 30,
   },
   card: {
     backgroundColor: '#ffffff',
