@@ -16,7 +16,8 @@ export default function FormularioSolicitudPage() {
   const [practicas, setPracticas] = useState([]);
   const [practicaSeleccionada, setPracticaSeleccionada] = useState(null);
   const [numeroEstudiantes, setNumeroEstudiantes] = useState('');
-  const [tamanoGrupo, setTamanoGrupo] = useState('3');
+  const [tamanoGrupo, setTamanoGrupo] = useState('0');
+  const [observaciones, setObservaciones] = useState('');
   const [insumos, setInsumos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [fechaReserva, setFechaReserva] = useState(new Date());
@@ -80,7 +81,7 @@ export default function FormularioSolicitudPage() {
 
   const handleEnviar = async () => {
     if (!practicaSeleccionada || !numeroEstudiantes) {
-      return Alert.alert("Error", "Completa todos los campos.");
+      return Alert.alert("Error", "Completa todos los campos obligatorios.");
     }
 
     if (horaFin <= horaInicio) {
@@ -101,7 +102,11 @@ export default function FormularioSolicitudPage() {
       fecha_hora_fin: fechaHoraFin.toISOString(),
       numero_estudiantes: parseInt(numeroEstudiantes),
       tamano_grupo: parseInt(tamanoGrupo),
-      observaciones: "Solicitud de práctica de electrónica básica"
+      observaciones: observaciones || "Sin observaciones",
+      insumos: insumos.map(i => ({
+        id_insumo: i.id_insumo,
+        cantidad_por_grupo: i.cantidad_requerida
+      }))
     };
 
     try {
@@ -154,13 +159,40 @@ export default function FormularioSolicitudPage() {
             <DateTimePicker value={horaFin} mode="time" display="spinner" onChange={handleEndTimeChange} locale="es-ES" />
           )}
 
-          <Picker selectedValue={practicaSeleccionada?.id_practica} onValueChange={handleSeleccionPractica} style={styles.picker} dropdownIconColor="#592644">
+          <Picker 
+            selectedValue={practicaSeleccionada?.id_practica} 
+            onValueChange={handleSeleccionPractica} 
+            style={styles.picker} 
+            dropdownIconColor="#592644"
+          >
             <Picker.Item label="Selecciona una práctica..." value={null} color="#999" />
             {practicas.map(p => <Picker.Item key={p.id_practica} label={p.titulo} value={p.id_practica} color="#000" />)}
           </Picker>
 
-          <TextInput style={styles.input} placeholder="Número de estudiantes" keyboardType="numeric" value={numeroEstudiantes} onChangeText={setNumeroEstudiantes} />
-          <TextInput style={styles.input} placeholder="Tamaño de grupo" keyboardType="numeric" value={tamanoGrupo} onChangeText={setTamanoGrupo} />
+          <TextInput 
+            style={styles.input} 
+            placeholder="Número de estudiantes *" 
+            keyboardType="numeric" 
+            value={numeroEstudiantes} 
+            onChangeText={setNumeroEstudiantes} 
+          />
+          
+          <TextInput 
+            style={styles.input} 
+            placeholder="Tamaño de grupo (opcional)" 
+            keyboardType="numeric" 
+            value={tamanoGrupo} 
+            onChangeText={setTamanoGrupo} 
+          />
+          
+          <TextInput
+            style={[styles.input, { height: 100, textAlignVertical: 'top' }]}
+            placeholder="Observaciones (opcional)"
+            multiline
+            numberOfLines={4}
+            value={observaciones}
+            onChangeText={setObservaciones}
+          />
 
           {insumos.length > 0 && (
             <View style={styles.insumosContainer}>
@@ -168,7 +200,7 @@ export default function FormularioSolicitudPage() {
               {insumos.map(i => (
                 <View key={i.id_insumo} style={styles.insumoRow}>
                   <Text style={styles.insumoNombre}>{i.insumo_nombre}</Text>
-                  <Text style={styles.insumoCantidad}>{calcularCantidadTotal(i.cantidad_requerida)}</Text>
+                  <Text style={styles.insumoCantidad}>{calcularCantidadTotal(i.cantidad_requerida)} {i.unidad_medida}</Text>
                 </View>
               ))}
             </View>
@@ -184,12 +216,10 @@ export default function FormularioSolicitudPage() {
 }
 
 const styles = StyleSheet.create({
-  
   container: { 
     padding: 20,
     backgroundColor: Platform.OS === 'ios' ? '#DADADA' : '#FFFFFF',
     paddingTop: 70 
-      
   },
   title: { 
     fontSize: 24, 
