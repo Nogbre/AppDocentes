@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useContext } from 'react';
 import {
   View, Text, StyleSheet, Animated, Dimensions,
-  TouchableOpacity, Alert, ScrollView, ActivityIndicator, RefreshControl
+  TouchableOpacity, Alert, ScrollView, ActivityIndicator, RefreshControl, Image
 } from 'react-native';
 import { SessionContext } from '../context/SessionContext';
 import axios from 'axios';
@@ -85,10 +85,24 @@ export default function HomeScreen({ navigation }) {
       <Animated.View style={[styles.overlay, { transform: [{ translateY: slideAnim }] }]}>
         {animComplete && <View style={styles.logoContainer} />}
         <TouchableOpacity style={styles.navbar} onPress={toggleMenu}>
-          <Ionicons name="home-outline" size={30} color="white" style={{ marginTop: 50 }} />
+          <View style={styles.navbarContent}>
+            <Ionicons 
+              name={menuAbierto ? "chevron-up" : "chevron-down"} 
+              size={30} 
+              color="white" 
+            />
+            {menuAbierto && (
+              <Text style={styles.navbarText}>Ocultar menú</Text>
+            )}
+          </View>
         </TouchableOpacity>
         {menuAbierto && (
           <View style={styles.menuContentCentered}>
+            <Image 
+              source={require('../assets/logo-2.png')} 
+              style={styles.menuLogo} 
+              resizeMode="contain"
+            />
             <TouchableOpacity onPress={cerrarSesion} style={styles.logoutButton}>
               <Icon name="logout" size={20} color="#fff" style={{ marginRight: 8 }} />
               <Text style={styles.logoutText}>Cerrar sesión</Text>
@@ -194,6 +208,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
+  },
+  navbarContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 50,
+  },
+  navbarText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginLeft: 10,
   },
   content: {
     zIndex: 1,
@@ -306,21 +331,26 @@ const styles = StyleSheet.create({
   },
   menuContentCentered: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 150,
+  },
+  menuLogo: {
+    height: 150,
+    width: 300,
+    marginTop: height * 0.2, // 20% de la altura de la pantalla
   },
   logoutButton: {
     backgroundColor: '#ffffff20',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
+    paddingVertical: 15,
+    paddingHorizontal: 30,
+    borderRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 100,
   },
   logoutText: {
     color: 'white',
     fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: 18,
   },
 });

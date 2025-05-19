@@ -20,7 +20,7 @@ export default function FormularioSolicitudPage() {
   const [observaciones, setObservaciones] = useState('');
   const [insumos, setInsumos] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [fechaReserva, setFechaReserva] = useState(new Date());
+  const [fechaReserva, setFechaReserva] = useState(new Date(Date.now() + 24 * 60 * 60 * 1000));
   const [horaInicio, setHoraInicio] = useState(new Date());
   const [horaFin, setHoraFin] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -61,17 +61,41 @@ export default function FormularioSolicitudPage() {
 
   const handleDateChange = (_, selectedDate) => {
     setShowDatePicker(false);
-    if (selectedDate instanceof Date) setFechaReserva(selectedDate);
+    if (selectedDate instanceof Date) {
+      const minimumDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      if (selectedDate < minimumDate) {
+        Alert.alert("Error", "La reserva debe hacerse con al menos 24 horas de anticipación.");
+        return;
+      }
+      setFechaReserva(selectedDate);
+    }
   };
 
   const handleStartTimeChange = (_, selectedTime) => {
     setShowStartTimePicker(false);
-    if (selectedTime instanceof Date) setHoraInicio(selectedTime);
+    if (selectedTime instanceof Date) {
+      const fechaHoraSeleccionada = new Date(fechaReserva);
+      fechaHoraSeleccionada.setHours(selectedTime.getHours(), selectedTime.getMinutes());
+      
+      const minimumDateTime = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      
+      if (fechaHoraSeleccionada < minimumDateTime) {
+        Alert.alert("Error", "La hora seleccionada debe ser al menos 24 horas después de la hora actual.");
+        return;
+      }
+      setHoraInicio(selectedTime);
+    }
   };
 
   const handleEndTimeChange = (_, selectedTime) => {
     setShowEndTimePicker(false);
-    if (selectedTime instanceof Date) setHoraFin(selectedTime);
+    if (selectedTime instanceof Date) {
+      if (selectedTime <= horaInicio) {
+        Alert.alert("Error", "La hora de fin debe ser posterior a la hora de inicio");
+        return;
+      }
+      setHoraFin(selectedTime);
+    }
   };
 
   const calcularCantidadTotal = (porGrupo) => {
@@ -84,15 +108,22 @@ export default function FormularioSolicitudPage() {
       return Alert.alert("Error", "Completa todos los campos obligatorios.");
     }
 
-    if (horaFin <= horaInicio) {
-      return Alert.alert("Error", "La hora de fin debe ser posterior a la hora de inicio");
-    }
-
     const fechaHoraInicio = new Date(fechaReserva);
     fechaHoraInicio.setHours(horaInicio.getHours(), horaInicio.getMinutes());
 
     const fechaHoraFin = new Date(fechaReserva);
     fechaHoraFin.setHours(horaFin.getHours(), horaFin.getMinutes());
+
+    if (fechaHoraFin <= fechaHoraInicio) {
+      return Alert.alert("Error", "La hora de fin debe ser posterior a la hora de inicio");
+    }
+
+    const ahora = new Date();
+    const minimumDateTime = new Date(ahora.getTime() + 24 * 60 * 60 * 1000);
+
+    if (fechaHoraInicio < minimumDateTime) {
+      return Alert.alert("Error", "La reserva debe hacerse con al menos 24 horas de anticipación.");
+    }
 
     const payload = {
       id_docente: docente?.id_docente,
@@ -132,21 +163,28 @@ export default function FormularioSolicitudPage() {
           <Text style={styles.title}>Crear Solicitud</Text>
           {loading && <ActivityIndicator size="small" color="#592644" />}
 
-          {/* Fecha y hora */}
+          <Text style={styles.label}>Fecha de reserva</Text>
           <TouchableOpacity style={styles.datetimeInput} onPress={() => setShowDatePicker(true)}>
             <Text style={styles.datetimeText}>{formatDate(fechaReserva)}</Text>
             <Ionicons name="calendar" size={20} color="#592644" />
           </TouchableOpacity>
 
+          <Text style={styles.label}>Horario</Text>
           <View style={styles.timeContainer}>
-            <TouchableOpacity style={[styles.datetimeInput, { flex: 1, marginRight: 10 }]} onPress={() => setShowStartTimePicker(true)}>
-              <Text style={styles.datetimeText}>{formatTime(horaInicio)}</Text>
-              <Ionicons name="time-outline" size={20} color="#592644" />
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.datetimeInput, { flex: 1 }]} onPress={() => setShowEndTimePicker(true)}>
-              <Text style={styles.datetimeText}>{formatTime(horaFin)}</Text>
-              <Ionicons name="time-outline" size={20} color="#592644" />
-            </TouchableOpacity>
+            <View style={{ flex: 1, marginRight: 10 }}>
+              <Text style={styles.sublabel}>Hora inicio</Text>
+              <TouchableOpacity style={styles.datetimeInput} onPress={() => setShowStartTimePicker(true)}>
+                <Text style={styles.datetimeText}>{formatTime(horaInicio)}</Text>
+                <Ionicons name="time-outline" size={20} color="#592644" />
+              </TouchableOpacity>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.sublabel}>Hora fin</Text>
+              <TouchableOpacity style={styles.datetimeInput} onPress={() => setShowEndTimePicker(true)}>
+                <Text style={styles.datetimeText}>{formatTime(horaFin)}</Text>
+                <Ionicons name="time-outline" size={20} color="#592644" />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {showDatePicker && (
@@ -159,6 +197,7 @@ export default function FormularioSolicitudPage() {
             <DateTimePicker value={horaFin} mode="time" display="spinner" onChange={handleEndTimeChange} locale="es-ES" />
           )}
 
+          <Text style={styles.label}>Práctica</Text>
           <Picker 
             selectedValue={practicaSeleccionada?.id_practica} 
             onValueChange={handleSeleccionPractica} 
@@ -169,25 +208,28 @@ export default function FormularioSolicitudPage() {
             {practicas.map(p => <Picker.Item key={p.id_practica} label={p.titulo} value={p.id_practica} color="#000" />)}
           </Picker>
 
+          <Text style={styles.label}>Número de estudiantes *</Text>
           <TextInput 
             style={styles.input} 
-            placeholder="Número de estudiantes *" 
+            placeholder="Ingrese el número de estudiantes" 
             keyboardType="numeric" 
             value={numeroEstudiantes} 
             onChangeText={setNumeroEstudiantes} 
           />
           
+          <Text style={styles.label}>Tamaño de grupo</Text>
           <TextInput 
             style={styles.input} 
-            placeholder="Tamaño de grupo (opcional)" 
+            placeholder="Ingrese el tamaño de grupo (opcional)" 
             keyboardType="numeric" 
             value={tamanoGrupo} 
             onChangeText={setTamanoGrupo} 
           />
           
+          <Text style={styles.label}>Observaciones</Text>
           <TextInput
             style={[styles.input, { height: 100, textAlignVertical: 'top' }]}
-            placeholder="Observaciones (opcional)"
+            placeholder="Ingrese observaciones adicionales (opcional)"
             multiline
             numberOfLines={4}
             value={observaciones}
@@ -321,5 +363,17 @@ const styles = StyleSheet.create({
     borderColor: '#ccc',
     borderRadius: 10,
     marginBottom: 15,
-  }
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+  },
+  sublabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#666',
+    marginBottom: 4,
+  },
 });
