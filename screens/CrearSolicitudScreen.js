@@ -15,6 +15,7 @@ export default function FormularioSolicitudPage() {
   const { docente } = useContext(SessionContext);
   const [practicas, setPracticas] = useState([]);
   const [practicaSeleccionada, setPracticaSeleccionada] = useState(null);
+  const [tipoPractica, setTipoPractica] = useState('planificada');
   const [numeroEstudiantes, setNumeroEstudiantes] = useState('');
   const [tamanoGrupo, setTamanoGrupo] = useState('0');
   const [observaciones, setObservaciones] = useState('');
@@ -162,6 +163,34 @@ export default function FormularioSolicitudPage() {
 
           <Text style={styles.title}>Crear Solicitud</Text>
           {loading && <ActivityIndicator size="small" color="#592644" />}
+
+          <Text style={styles.label}>Tipo de práctica</Text>
+          <View style={styles.tipoPracticaContainer}>
+            <TouchableOpacity 
+              style={[
+                styles.tipoPracticaButton, 
+                tipoPractica === 'planificada' && styles.tipoPracticaButtonSelected
+              ]}
+              onPress={() => setTipoPractica('planificada')}
+            >
+              <Text style={[
+                styles.tipoPracticaText,
+                tipoPractica === 'planificada' && styles.tipoPracticaTextSelected
+              ]}>Planificada</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[
+                styles.tipoPracticaButton, 
+                tipoPractica === 'reposicion' && styles.tipoPracticaButtonSelected
+              ]}
+              onPress={() => setTipoPractica('reposicion')}
+            >
+              <Text style={[
+                styles.tipoPracticaText,
+                tipoPractica === 'reposicion' && styles.tipoPracticaTextSelected
+              ]}>Reposición</Text>
+            </TouchableOpacity>
+          </View>
 
           <Text style={styles.label}>Fecha de reserva</Text>
           <TouchableOpacity style={styles.datetimeInput} onPress={() => setShowDatePicker(true)}>
@@ -375,5 +404,33 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#666',
     marginBottom: 4,
+  },
+  tipoPracticaContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 15,
+  },
+  tipoPracticaButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    backgroundColor: '#f0f0f0',
+    marginHorizontal: 5,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ccc',
+  },
+  tipoPracticaButtonSelected: {
+    backgroundColor: '#592644',
+    borderColor: '#592644',
+  },
+  tipoPracticaText: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '500',
+  },
+  tipoPracticaTextSelected: {
+    color: '#fff',
   },
 });
