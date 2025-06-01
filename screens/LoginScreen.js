@@ -40,13 +40,16 @@ export default function LoginScreen() {
       });
   
       const docente = response.data;
-      await login(docente);
-    
+      
+      // Primero bajamos el telón
       Animated.timing(expandAnim, {
         toValue: height,
-        duration: 600,
+        duration: 300,
         useNativeDriver: false,
-      }).start();
+      }).start(async () => {
+        // Una vez que el telón está abajo, hacemos el login
+        await login(docente);
+      });
   
     } catch (error) {
       if (error.response?.status === 401) {

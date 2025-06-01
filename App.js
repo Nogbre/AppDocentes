@@ -6,6 +6,7 @@ import LoginScreen from './screens/LoginScreen';
 import HomeScreen from './screens/HomeScreen';
 import CrearSolicitudScreen from './screens/CrearSolicitudScreen';
 import SolicitudExitosa from './components/SolicitudExitosa';
+import DetalleSolicitudScreen from './screens/DetalleSolicitudScreen';
 
 import { SessionProvider, SessionContext } from './context/SessionContext';
 
@@ -25,6 +26,7 @@ function AppNavigator() {
             <Stack.Screen name="Home" component={HomeScreen} />
             <Stack.Screen name="CrearSolicitud" component={CrearSolicitudScreen} />
             <Stack.Screen name="SolicitudExitosa" component={SolicitudExitosa} />
+            <Stack.Screen name="DetalleSolicitud" component={DetalleSolicitudScreen} />
           </>
         ) : (
           <Stack.Screen name="Login" component={LoginScreen} />

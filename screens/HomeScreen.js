@@ -24,18 +24,20 @@ export default function HomeScreen({ navigation }) {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
-    Animated.timing(slideAnim, {
-      toValue: -(height - NAVBAR_HEIGHT),
-      duration: 600,
-      useNativeDriver: true,
-    }).start(() => {
-      Animated.timing(fadeAnim, {
-        toValue: 1,
+    setTimeout(() => {
+      Animated.timing(slideAnim, {
+        toValue: -(height - NAVBAR_HEIGHT),
         duration: 400,
         useNativeDriver: true,
-      }).start();
-      setAnimComplete(true);
-    });
+      }).start(() => {
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }).start();
+        setAnimComplete(true);
+      });
+    }, 100);
   }, []);
 
   const cargarSolicitudes = () => {
@@ -145,17 +147,22 @@ export default function HomeScreen({ navigation }) {
                 if (s.estado.toLowerCase() === 'rechazada') estadoColor = '#e53935';
 
                 return (
-                  <View key={s.id_solicitud} style={[styles.card, { borderLeftColor: estadoColor }]}>
-                    <View style={styles.cardHeader}>
-                      <Text style={styles.cardTitle}>{s.practica_titulo}</Text>
-                      <View style={[styles.badge, { backgroundColor: estadoColor }]}>
-                        <Text style={styles.badgeText}>{s.estado}</Text>
+                  <TouchableOpacity 
+                    key={s.id_solicitud} 
+                    onPress={() => navigation.navigate('DetalleSolicitud', { solicitud: s })}
+                  >
+                    <View style={[styles.card, { borderLeftColor: estadoColor }]}>
+                      <View style={styles.cardHeader}>
+                        <Text style={styles.cardTitle}>{s.practica_titulo}</Text>
+                        <View style={[styles.badge, { backgroundColor: estadoColor }]}>
+                          <Text style={styles.badgeText}>{s.estado}</Text>
+                        </View>
                       </View>
+                      <Text style={styles.cardText}>Estudiantes: {s.numero_estudiantes}</Text>
+                      <Text style={styles.cardText}>Laboratorio: {s.laboratorio_nombre}</Text>
+                      <Text style={styles.cardText}>Fecha: {new Date(s.fecha_solicitud).toLocaleString()}</Text>
                     </View>
-                    <Text style={styles.cardText}>Estudiantes: {s.numero_estudiantes}</Text>
-                    <Text style={styles.cardText}>Laboratorio: {s.laboratorio_nombre}</Text>
-                    <Text style={styles.cardText}>Fecha: {new Date(s.fecha_solicitud).toLocaleString()}</Text>
-                  </View>
+                  </TouchableOpacity>
                 );
               })
             )}
