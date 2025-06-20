@@ -4,21 +4,31 @@ import {
   TouchableOpacity, Alert, ScrollView, ActivityIndicator, RefreshControl, Image
 } from 'react-native';
 import { SessionContext } from '../context/SessionContext';
-import axios from 'axios';
+import { NotificationContext } from '../context/NotificationContext';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Ionicons } from '@expo/vector-icons';
+import LastUpdateIndicator from '../components/LastUpdateIndicator';
 
 const { height } = Dimensions.get('window');
 const NAVBAR_HEIGHT = 130;
 
 export default function HomeScreen({ navigation }) {
   const { logout, docente } = useContext(SessionContext);
+  const { 
+    solicitudes, 
+    lastUpdate, 
+    isPolling, 
+    cargarSolicitudes, 
+    notificacionesGuardadas,
+    setUserInHome,
+    reiniciarSistemaNotificaciones,
+    probarNotificacion
+  } = useContext(NotificationContext);
 
   const slideAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const [animComplete, setAnimComplete] = useState(false);
   const [menuAbierto, setMenuAbierto] = useState(false);
-  const [solicitudes, setSolicitudes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filtro, setFiltro] = useState('pendiente');
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -40,25 +50,25 @@ export default function HomeScreen({ navigation }) {
     }, 100);
   }, []);
 
-  const cargarSolicitudes = () => {
-    if (docente?.id_docente) {
-      setLoading(true);
-      axios.get(`https://universidad-la9h.onrender.com/solicitudes-uso?id_docente=${docente.id_docente}`)
-        .then(res => setSolicitudes(res.data))
-        .catch(() => {
-          Alert.alert("Error", "No se pudieron cargar las solicitudes.");
-        })
-        .finally(() => setLoading(false));
-    }
-  };
-
+  // Actualizar loading cuando las solicitudes cambien
   useEffect(() => {
-    cargarSolicitudes();
-  }, [docente]);
+    if (solicitudes.length > 0 || lastUpdate) {
+      setLoading(false);
+    }
+  }, [solicitudes, lastUpdate]);
 
-  const onRefresh = () => {
+  // Notificar cuando el usuario entra y sale de Home
+  useEffect(() => {
+    setUserInHome(true);
+    
+    return () => {
+      setUserInHome(false);
+    };
+  }, []);
+
+  const onRefresh = async () => {
     setIsRefreshing(true);
-    cargarSolicitudes();
+    await cargarSolicitudes();
     setIsRefreshing(false);
   };
 
@@ -81,6 +91,9 @@ export default function HomeScreen({ navigation }) {
   };
 
   const solicitudesFiltradas = solicitudes.filter(s => s.estado.toLowerCase() === filtro.toLowerCase());
+  
+  // Contar notificaciones no leídas
+  const notificacionesNoLeidas = notificacionesGuardadas.filter(n => !n.leida).length;
 
   return (
     <View style={styles.container}>
@@ -105,16 +118,54 @@ export default function HomeScreen({ navigation }) {
               style={styles.menuLogo} 
               resizeMode="contain"
             />
-            <TouchableOpacity onPress={cerrarSesion} style={styles.logoutButton}>
-              <Icon name="logout" size={20} color="#fff" style={{ marginRight: 8 }} />
-              <Text style={styles.logoutText}>Cerrar sesión</Text>
-            </TouchableOpacity>
+            <View style={styles.menuButtons}>
+              <TouchableOpacity 
+                onPress={() => navigation.navigate('Notificaciones')} 
+                style={styles.notificationButton}
+              >
+                <View style={styles.notificationButtonContent}>
+                  <Ionicons name="notifications" size={24} color="#fff" />
+                  <Text style={styles.notificationButtonText}>Notificaciones</Text>
+                  {notificacionesNoLeidas > 0 && (
+                    <View style={styles.notificationBadge}>
+                      <Text style={styles.notificationBadgeText}>
+                        {notificacionesNoLeidas > 99 ? '99+' : notificacionesNoLeidas}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </TouchableOpacity>
+              
+              <TouchableOpacity onPress={cerrarSesion} style={styles.logoutButton}>
+                <Icon name="logout" size={20} color="#fff" style={{ marginRight: 8 }} />
+                <Text style={styles.logoutText}>Cerrar sesión</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                onPress={reiniciarSistemaNotificaciones} 
+                style={[styles.logoutButton, { backgroundColor: '#ff9800', marginTop: 10 }]}
+              >
+                <Icon name="refresh" size={20} color="#fff" style={{ marginRight: 8 }} />
+                <Text style={styles.logoutText}>Reiniciar Notificaciones</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                onPress={probarNotificacion} 
+                style={[styles.logoutButton, { backgroundColor: '#4caf50', marginTop: 10 }]}
+              >
+                <Icon name="bell" size={20} color="#fff" style={{ marginRight: 8 }} />
+                <Text style={styles.logoutText}>Probar Notificación</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
       </Animated.View>
 
       <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
-        <Text style={styles.text}>Solicitudes</Text>
+        <View style={styles.headerContainer}>
+          <Text style={styles.text}>Solicitudes</Text>
+          <LastUpdateIndicator lastUpdate={lastUpdate} isPolling={isPolling} />
+        </View>
 
         <View style={styles.filtroContainer}>
           {['pendiente', 'aprobada', 'rechazada'].map(estado => (
@@ -346,6 +397,44 @@ const styles = StyleSheet.create({
     width: 300,
     marginTop: height * 0.2, // 20% de la altura de la pantalla
   },
+  menuButtons: {
+    alignItems: 'center',
+    marginBottom: 100,
+    width: '100%',
+  },
+  notificationButton: {
+    backgroundColor: '#ffffff20',
+    paddingVertical: 15,
+    paddingHorizontal: 30,
+    borderRadius: 12,
+    marginBottom: 15,
+    width: '80%',
+  },
+  notificationButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notificationButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 18,
+    marginLeft: 10,
+  },
+  notificationBadge: {
+    backgroundColor: '#e53935',
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 10,
+    marginLeft: 8,
+    minWidth: 20,
+    alignItems: 'center',
+  },
+  notificationBadgeText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
   logoutButton: {
     backgroundColor: '#ffffff20',
     paddingVertical: 15,
@@ -353,11 +442,33 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 100,
+    width: '80%',
+    justifyContent: 'center',
   },
   logoutText: {
     color: 'white',
     fontWeight: 'bold',
     fontSize: 18,
+  },
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  statusIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statusDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#592644',
+    marginRight: 5,
+  },
+  statusText: {
+    color: '#592644',
+    fontWeight: 'bold',
   },
 });

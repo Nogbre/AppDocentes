@@ -10,6 +10,7 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@expo/metro-runtime": "~5.0.4",
     "@react-native-async-storage/async-storage": "^2.1.2",
     "@react-native-community/datetimepicker": "^8.3.0",
     "@react-native-firebase/app": "^22.2.0",
@@ -21,10 +22,12 @@
     "expo": "~53.0.7",
     "expo-av": "~15.1.4",
     "expo-camera": "~16.1.6",
+    "expo-notifications": "^0.27.8",
     "expo-permissions": "^14.4.0",
     "expo-status-bar": "~2.2.3",
     "lottie-react-native": "7.2.2",
     "react": "19.0.0",
+    "react-dom": "19.0.0",
     "react-native": "0.79.2",
     "react-native-animatable": "^1.4.0",
     "react-native-date-picker": "^5.0.12",
@@ -39,9 +42,7 @@
     "react-native-screens": "~4.10.0",
     "react-native-sound": "^0.11.2",
     "react-native-vector-icons": "^10.2.0",
-    "react-dom": "19.0.0",
-    "react-native-web": "^0.20.0",
-    "@expo/metro-runtime": "~5.0.4"
+    "react-native-web": "^0.20.0"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
