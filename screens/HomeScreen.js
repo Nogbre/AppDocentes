@@ -148,14 +148,6 @@ export default function HomeScreen({ navigation }) {
                 <Icon name="refresh" size={20} color="#fff" style={{ marginRight: 8 }} />
                 <Text style={styles.logoutText}>Reiniciar Notificaciones</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
-                onPress={probarNotificacion} 
-                style={[styles.logoutButton, { backgroundColor: '#4caf50', marginTop: 10 }]}
-              >
-                <Icon name="bell" size={20} color="#fff" style={{ marginRight: 8 }} />
-                <Text style={styles.logoutText}>Probar Notificación</Text>
-              </TouchableOpacity>
             </View>
           </View>
         )}
